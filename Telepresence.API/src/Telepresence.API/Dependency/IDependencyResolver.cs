@@ -1,6 +1,7 @@
 ﻿namespace Telepresence.API.Dependency
 {
-    public interface IDependencyResolver
-    {
-    }
+    /// <summary>
+    /// Register in IoC Container
+    /// </summary>
+    public interface IDependencyResolver { }
 }

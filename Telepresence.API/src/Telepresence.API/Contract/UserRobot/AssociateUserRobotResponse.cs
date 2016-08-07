@@ -1,7 +1,13 @@
 ﻿namespace Telepresence.API.Contract.UserRobot
 {
-    public class AssociateUserRobotResponse
+    /// <summary>
+    /// Return information about association between users and robots
+    /// </summary>
+    public class AssociateUserRobotResponse : ResponseContractBase
     {
+        /// <summary>
+        /// Success
+        /// </summary>
         public bool Success { get; set; }
     }
 }

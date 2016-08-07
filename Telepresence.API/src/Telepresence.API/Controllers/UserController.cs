@@ -1,45 +1,44 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Telepresence.API.Contract.Robot;
 using Microsoft.AspNetCore.Mvc;
+using Telepresence.API.Contract.TelepresenceUser;
 using System.Net;
-using Telepresence.API.Services.Robot;
+using Telepresence.API.Services.Telepresence;
+using Telepresence.API.Contract.User;
 
 namespace Telepresence.API.Controllers
 {
     /// <summary>
-    /// Robot Controller
+    /// User Controller
     /// </summary>
     [Route("api/[controller]")]
     [Produces("application/json")]
-    public class RobotController : Controller
+    public class UserController : Controller
     {
-        private readonly IRobotService _service;
+        private readonly ITelepresenceSerivce _service;
 
         /// <summary>
         /// Constructor
         /// </summary>
-        public RobotController(IRobotService service)
+        /// <param name="service">Dependent service</param>
+        public UserController(ITelepresenceSerivce service)
         {
             _service = service;
         }
 
         /// <summary>
-        /// Register a robot
+        /// Register a new user
         /// </summary>
-        /// <param name="robot"></param>
-        /// <returns></returns>
+        /// <param name="request">User information</param>
+        /// <returns>Registered user id</returns>
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody]RegisterRobotRequest robot)
+        public async Task<IActionResult> Post([FromBody]UserRegisterRequest request)
         {
-            var response = new RegisterRobotResponse();
+            var response = new UserRegisterResponse();
 
             try
             {
-                response = await _service.RegisterAsync(robot);
-
-                if (string.IsNullOrWhiteSpace(response.RobotId))
-                    return BadRequest();
+                response = await _service.RegisterAsync(request);
 
                 return Ok(response);
             }
@@ -51,23 +50,20 @@ namespace Telepresence.API.Controllers
         }
 
         /// <summary>
-        /// Gets a robot
+        /// Gest a user
         /// </summary>
-        /// <param name="request">Robot information</param>
+        /// <param name="request">User identifier</param>
         /// <returns></returns>
         [HttpGet]
-        public async Task<IActionResult> Get([FromQuery]GetRobotRequest request)
+        public async Task<IActionResult> Get([FromQuery]GetUserRequest request)
         {
-            var response = new GetRobotResponse();
+            var response = new GetUserResponse();
 
             try
             {
-                if (string.IsNullOrWhiteSpace(request.Id))
-                    return BadRequest("Must specify the robot Id");
-
                 response = await _service.GetAsync(request);
 
-                if (response.Robot == null)
+                if (response.User == null)
                     return NotFound();
 
                 return Ok(response);
@@ -75,6 +71,7 @@ namespace Telepresence.API.Controllers
             catch (Exception e)
             {
                 response.Exception = e;
+
                 return StatusCode((int)HttpStatusCode.InternalServerError, response);
             }
         }

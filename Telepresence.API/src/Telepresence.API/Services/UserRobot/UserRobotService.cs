@@ -10,7 +10,7 @@ using Telepresence.API.Repository.UserRobot;
 namespace Telepresence.API.Services.UserRobot
 {
     /// <summary>
-    /// Service Managet to User and Robots
+    /// Service Manager to User and Robots
     /// </summary>
     public class UserRobotService : IUserRobotService
     {
@@ -39,12 +39,17 @@ namespace Telepresence.API.Services.UserRobot
 
             try
             {
-                var association = await _repository.GetAsync(ass => ass.RobotId == request.UserRobot.RobotId && ass.Active);
+                var association = await _repository.GetAsync(ass => ass.RobotId == request.RobotId && ass.Active);
 
                 if (association.Any())
                     throw new Exception("Robot isn't avaliable to association");
 
-                await _repository.SaveAssociationAsync(request.UserRobot);
+                await _repository.SaveAssociationAsync(new Models.Telepresence.UserRobot
+                {
+                    Active = request.Active,
+                    AssociationExpires = request.AssociationExpires,
+                    UserId = request.UserId
+                });
                 response.Success = true;
             }
             catch
@@ -59,34 +64,30 @@ namespace Telepresence.API.Services.UserRobot
         /// Send the user command for the robot
         /// </summary>
         /// <param name="request">Command</param>
+        /// <param name="robotId">Robot Id</param>
         /// <returns></returns>
-        public async Task<SendCommandResponse> SendCommandAsync(SendCommandRequest request)
+        public async Task<SendCommandResponse> SendCommandAsync(string robotId, SendCommandRequest request)
         {
             var response = new SendCommandResponse();
 
-            try
-            {
-                if (!await RobotAvaliableToAssociation(request.RobotId, request.UserId))
-                    throw new Exception("Association beetwen robot and user doesn't exists or is unavailiable.");
+            if (!await RobotAssociateToUser(robotId, request.UserId))
+                throw new Exception("Association beetwen robot and user doesn't exists or is unavailiable.");
 
-                var eventHubClient = EventHubClient.CreateFromConnectionString(_eventHubEndpoint, _eventHubPath);
+            var eventHubClient = EventHubClient.CreateFromConnectionString(_eventHubEndpoint, _eventHubPath);
 
-                var message = new SendCommandMessage(request.AxisX, request.AxisY);
+            //Get or create the topic
 
-                await eventHubClient.SendAsync(
-                    await message.GetAsEventData());
+            var message = new SendCommandMessage(request.AxisX, request.AxisY);
 
-                response.Success = true;
-            }
-            catch
-            {
-                response.Success = false;
-            }
+            await eventHubClient.SendAsync(
+                await message.GetAsEventData());
+
+            response.Success = true;
 
             return response;
         }
 
-        private async Task<bool> RobotAvaliableToAssociation(string robotId, string userId)
+        private async Task<bool> RobotAssociateToUser(string robotId, string userId)
         {
             var association = await _repository.GetAsync(ass => ass.RobotId == robotId && ass.UserId == userId);
 
