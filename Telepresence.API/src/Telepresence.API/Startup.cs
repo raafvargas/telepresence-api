@@ -4,8 +4,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Serialization;
+using Swashbuckle.Swagger.Model;
 using Telepresence.API.Dependency;
-using Telepresence.API.Documentation;
 
 namespace Telepresence.API
 {
@@ -42,13 +42,25 @@ namespace Telepresence.API
         /// </summary>
         /// <param name="services">IServiceCollection</param>
         public void ConfigureServices(IServiceCollection services)
-        {
+        {           
             services.AddMvc()
                     .AddJsonOptions(options => options.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver())
                     .AddWebApiConventions();
 
             services.AddCors();
-            services.AddSwagger();
+
+            services.AddSwaggerGen(s =>
+            {
+                s.SingleApiVersion(new Info
+                {
+                    Version = "v1",
+                    Title = "Telepresence API",
+                    Description = "API to manage communication between users and telepresence robots",
+                    TermsOfService = "None"
+                });
+                s.DescribeAllEnumsAsStrings();
+            });
+
             services.AddOptions();
             services.AddMemoryCache();
             services.AddInternalDependencies<IDependencyResolver>();
@@ -72,7 +84,8 @@ namespace Telepresence.API
                     template: "{controller}/{action}/{id?}");
             });
 
-            app.UseSwagger();
+            app.UseSwagger("");
+            app.UseSwaggerUi();
             app.UseStaticFiles();
             app.UseApplicationInsightsRequestTelemetry();
             app.UseApplicationInsightsExceptionTelemetry();

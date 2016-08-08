@@ -1,13 +1,14 @@
 ﻿using System.Threading.Tasks;
 using Telepresence.API.Contract.TelepresenceUser;
 using Telepresence.API.Contract.User;
+using Telepresence.API.Dependency;
 
 namespace Telepresence.API.Services.Telepresence
 {
     /// <summary>
     /// Telepresence Service
     /// </summary>
-    public interface ITelepresenceSerivce
+    public interface ITelepresenceSerivce : IDependencyResolver
     {
         /// <summary>
         /// Register a user

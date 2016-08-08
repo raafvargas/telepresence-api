@@ -1,4 +1,5 @@
-﻿using Microsoft.ServiceBus.Messaging;
+﻿using Microsoft.ServiceBus;
+using Microsoft.ServiceBus.Messaging;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,10 +15,9 @@ namespace Telepresence.API.Services.UserRobot
     /// </summary>
     public class UserRobotService : IUserRobotService
     {
-        private readonly string _eventHubKey;
-        private readonly string _eventHubPath;
-        private readonly string _eventHubEndpoint;
+        private readonly string _namespaceConnectionString = "Endpoint=sb://telepresence-commands-ns.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=gaPsGEQONLY2OLphaQ2EZ5YKCx2q+0uVgwvJkqCuC4g=";
         private readonly IUserRobotRepository _repository;
+        private readonly NamespaceManager _namespaceManager;
 
         /// <summary>
         /// Constructor
@@ -26,6 +26,14 @@ namespace Telepresence.API.Services.UserRobot
         public UserRobotService(IUserRobotRepository repository)
         {
             _repository = repository;
+
+            var token = TokenProvider.CreateSharedAccessSignatureTokenProvider(
+                "RootManageSharedAccessKey",
+                "gaPsGEQONLY2OLphaQ2EZ5YKCx2q+0uVgwvJkqCuC4g=");
+
+            _namespaceManager = new NamespaceManager(
+                "sb://telepresence-commands-ns.servicebus.windows.net",
+                token);
         }
 
         /// <summary>
@@ -48,7 +56,8 @@ namespace Telepresence.API.Services.UserRobot
                 {
                     Active = request.Active,
                     AssociationExpires = request.AssociationExpires,
-                    UserId = request.UserId
+                    UserId = request.UserId,
+                    RobotId = request.RobotId
                 });
                 response.Success = true;
             }
@@ -73,9 +82,9 @@ namespace Telepresence.API.Services.UserRobot
             if (!await RobotAssociateToUser(robotId, request.UserId))
                 throw new Exception("Association beetwen robot and user doesn't exists or is unavailiable.");
 
-            var eventHubClient = EventHubClient.CreateFromConnectionString(_eventHubEndpoint, _eventHubPath);
+            await _namespaceManager.CreateEventHubIfNotExistsAsync(GetEventHubPath(robotId));
 
-            //Get or create the topic
+            var eventHubClient = EventHubClient.CreateFromConnectionString(_namespaceConnectionString, GetEventHubPath(robotId));
 
             var message = new SendCommandMessage(request.AxisX, request.AxisY);
 
@@ -91,7 +100,12 @@ namespace Telepresence.API.Services.UserRobot
         {
             var association = await _repository.GetAsync(ass => ass.RobotId == robotId && ass.UserId == userId);
 
-            return association == null;
+            return association.FirstOrDefault() != null;
+        }
+
+        private string GetEventHubPath(string robotId)
+        {
+            return $"RobotId-{robotId}".ToLowerInvariant();
         }
     }
 }
