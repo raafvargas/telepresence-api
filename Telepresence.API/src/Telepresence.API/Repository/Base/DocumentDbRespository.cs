@@ -15,8 +15,8 @@ namespace Telepresence.API.Repository.Base
     /// <typeparam name="TDocument"></typeparam>
     public class DocumentDbRespository<TDocument> where TDocument : DocumentBase
     {
-        private readonly string _primaryKey = "VmbmTHk9i1z9VSAGcmo10njfrSWkV1ViYnyIYxUUS12XKCjUtw3SWcVEqKaqptd2yakSPY54HicbbycaVle7Gw==";
-        private readonly string _endpoint = "https://telepresence.documents.azure.com:443/";
+        private readonly string _primaryKey = "wQx23VkEC50BcH06faRDBiEOJDi91YdDvXbwAOYVTswlKeg3Lravbu9oYsLCYvdIQz36JHRezAWhTU6fRyo1QA==";
+        private readonly string _endpoint = "https://telepresence-robot.documents.azure.com:443/";
         private readonly string _database;
         private readonly string _collection;
         private readonly DocumentClient _client;
@@ -31,6 +31,9 @@ namespace Telepresence.API.Repository.Base
             _database = database;
             _collection = collection;
             _client = new DocumentClient(new Uri(_endpoint), _primaryKey);
+
+            CreateDatabaseIfNotExists(_database).Wait();
+            CreateDocumentCollectionIfNotExists(_database, _collection).Wait();
         }
 
         /// <summary>
@@ -40,9 +43,6 @@ namespace Telepresence.API.Repository.Base
         /// <returns></returns>
         public async Task<string> Save(TDocument document)
         {
-            await CreateDatabaseIfNotExists(_database);
-            await CreateDocumentCollectionIfNotExists(_database, _collection);
-
             var source = await _client.UpsertDocumentAsync(UriFactory.CreateDocumentCollectionUri(_database, _collection), document);
 
             return source.Resource.Id;
@@ -54,9 +54,6 @@ namespace Telepresence.API.Repository.Base
         /// <returns></returns>
         public async Task<ICollection<TDocument>> Get()
         {
-            await CreateDatabaseIfNotExists(_database);
-            await CreateDocumentCollectionIfNotExists(_database, _collection);
-
             var documents = _client.CreateDocumentQuery<TDocument>(UriFactory.CreateDocumentCollectionUri(_database, _collection)).Where(_ => true);
 
             return documents.ToList();
@@ -69,9 +66,6 @@ namespace Telepresence.API.Repository.Base
         /// <returns></returns>
         public async Task<TDocument> Get(string id)
         {
-            await CreateDatabaseIfNotExists(_database);
-            await CreateDocumentCollectionIfNotExists(_database, _collection);
-
             var query = _client.CreateDocumentQuery<TDocument>(UriFactory.CreateDocumentCollectionUri(_database, _collection));
             var enumerable = query.AsEnumerable();
             return enumerable.FirstOrDefault(doc => doc.id == id);
@@ -84,9 +78,6 @@ namespace Telepresence.API.Repository.Base
         /// <returns></returns>
         public async Task<ICollection<TDocument>> Query(Expression<Func<TDocument, bool>> predicate)
         {
-            await CreateDatabaseIfNotExists(_database);
-            await CreateDocumentCollectionIfNotExists(_database, _collection);
-
             return _client.CreateDocumentQuery<TDocument>(UriFactory.CreateDocumentCollectionUri(_database, _collection)).Where(predicate).ToList();
         }
 

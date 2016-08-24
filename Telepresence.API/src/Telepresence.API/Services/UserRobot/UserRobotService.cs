@@ -1,10 +1,9 @@
-﻿using Microsoft.ServiceBus;
-using Microsoft.ServiceBus.Messaging;
-using System;
+﻿using System;
 using System.Linq;
+using System.Runtime.Serialization.Json;
 using System.Threading.Tasks;
 using Telepresence.API.Contract.UserRobot;
-using Telepresence.API.Messages;
+using Telepresence.API.MessageBroker;
 using Telepresence.API.Messages.Command;
 using Telepresence.API.Repository.UserRobot;
 
@@ -15,25 +14,18 @@ namespace Telepresence.API.Services.UserRobot
     /// </summary>
     public class UserRobotService : IUserRobotService
     {
-        private readonly string _namespaceConnectionString = "Endpoint=sb://telepresence-commands-ns.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=gaPsGEQONLY2OLphaQ2EZ5YKCx2q+0uVgwvJkqCuC4g=";
+        private readonly IMessageBroker _messageBroker;
         private readonly IUserRobotRepository _repository;
-        private readonly NamespaceManager _namespaceManager;
 
         /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="repository">Dependent repository</param>
-        public UserRobotService(IUserRobotRepository repository)
+        /// <param name="messageBroker">Message broker</param>
+        public UserRobotService(IUserRobotRepository repository, IMessageBroker messageBroker)
         {
             _repository = repository;
-
-            var token = TokenProvider.CreateSharedAccessSignatureTokenProvider(
-                "RootManageSharedAccessKey",
-                "gaPsGEQONLY2OLphaQ2EZ5YKCx2q+0uVgwvJkqCuC4g=");
-
-            _namespaceManager = new NamespaceManager(
-                "sb://telepresence-commands-ns.servicebus.windows.net",
-                token);
+            _messageBroker = messageBroker;
         }
 
         /// <summary>
@@ -82,14 +74,9 @@ namespace Telepresence.API.Services.UserRobot
             if (!await RobotAssociateToUser(robotId, request.UserId))
                 throw new Exception("Association beetwen robot and user doesn't exists or is unavailiable.");
 
-            await _namespaceManager.CreateEventHubIfNotExistsAsync(GetEventHubPath(robotId));
-
-            var eventHubClient = EventHubClient.CreateFromConnectionString(_namespaceConnectionString, GetEventHubPath(robotId));
-
             var message = new SendCommandMessage(request.AxisX, request.AxisY);
 
-            await eventHubClient.SendAsync(
-                await message.GetAsEventData());
+            _messageBroker.Publish(GetEventHubPath(robotId), message);
 
             response.Success = true;
 
@@ -105,7 +92,7 @@ namespace Telepresence.API.Services.UserRobot
 
         private string GetEventHubPath(string robotId)
         {
-            return $"RobotId-{robotId}".ToLowerInvariant();
+            return robotId.ToLowerInvariant();
         }
     }
 }
