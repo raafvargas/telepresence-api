@@ -24,22 +24,20 @@ namespace Telepresence.API.MessageBroker.RabbitMQ
             };
 
             using (var connection = factory.CreateConnection())
-            {
+            {                
                 using (var channel = connection.CreateModel())
                 {
-                    channel.QueueDeclare(
-                        queue: queue,
-                        durable: true,
-                        exclusive: false,
-                        autoDelete: false);
+                    channel.ConfirmSelect();
 
+                    channel.ExchangeDeclare(queue, "direct", true, false, null);
+
+                    var properties = channel.CreateBasicProperties();
+                    properties.Persistent = true;
+                    
                     var encodedMessage = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(message));
 
-                    channel.BasicPublish(
-                        exchange: string.Empty,
-                        routingKey: typeof(TMessage).Name,
-                        basicProperties: null,
-                        body: encodedMessage);
+                    channel.BasicPublish(queue, string.Empty, properties, encodedMessage);
+                    channel.Close();
                 }
             }
         }
